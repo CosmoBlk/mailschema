@@ -47,7 +47,9 @@ All under `Mailschema`:
 - `Message.part(description)`: the `Mail::Part` that carries a description, to place in a `multipart/related` entity after the readable content.
 - `Authentication::Signature` and `Authentication.qualifying(raw_message:, signatures:, organizational_domain: nil)`: the first signature your DKIM verifier reported that qualifies the raw message, or nil. Alignment is strict unless you pass a callable that returns a domain's organizational domain.
 
-Every `*_errors` method returns an array of strings, empty when the value is valid. Schemas are validated with `json_schemer` (JSON Schema 2020-12, ECMA-262 regular expressions) against the profile artifacts the gem bundles.
+Every `*_errors` method returns an array of strings, empty when the value is valid. Schemas are validated with `json_schemer` (JSON Schema 2020-12, ECMA-262 regular expressions) against the profile artifacts the gem bundles. Where a schema offers alternatives told apart by a constant, such as a schedule's `mode`, only the alternative the value chose is reported.
+
+A check covers the document: the core rules, and that `details` and the operations are what the contract allows. Whether the service, recipient, `details` and terms match a request recorded when the person started it, whether the current time is between `issuedAt` and `expiresAt`, and whether the message is authentic are for the implementation that acts on it, under the contract's requirements and the specification.
 
 ## Links
 

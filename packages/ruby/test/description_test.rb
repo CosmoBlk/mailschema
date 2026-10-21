@@ -30,6 +30,30 @@ class DescriptionTest < Minitest::Test
                  Mailschema.description_errors(description.merge("expiresAt" => description["issuedAt"]))
   end
 
+  def test_refuses_an_in_language_that_is_not_a_well_formed_bcp_47_tag
+    description = Fixtures.example("publication-approval")
+    %w[en en-GB zh-Hant-TW sl-rozaj-biske de-CH-1996 x-private i-klingon EN-gb].each do |tag|
+      assert_equal [], Mailschema.description_errors(description.merge("inLanguage" => tag)), tag
+    end
+    ["not a lang tag!!", "englishman", "en_GB", "en-", "en--GB", "a-b"].each do |tag|
+      assert_equal ["/inLanguage: must be a well-formed BCP 47 language tag"],
+                   Mailschema.description_errors(description.merge("inLanguage" => tag)), tag
+    end
+  end
+
+  def test_reports_only_the_one_of_branch_the_value_chose
+    contract = Fixtures.contracts.fetch("publication-approval")
+    details = Fixtures.example("publication-approval")["details"]
+    later = details.merge("schedule" => { "mode" => "later", "at" => "2026-10-21T09:00:00Z" })
+    assert_equal ["/details/schedule/mode: value at `/schedule/mode` is not one of: [\"immediate\", \"scheduled\"]"],
+                 contract.details_errors(later)
+    garbled = details.merge("schedule" => { "mode" => "scheduled", "at" => "tomorrow at noon" })
+    pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    assert_equal ["/details/schedule/at: string at `/schedule/at` does not match pattern: #{pattern}",
+                  "/details/schedule/at: value at `/schedule/at` does not match format: date-time"],
+                 contract.details_errors(garbled)
+  end
+
   def test_refuses_repeated_operations
     description = Fixtures.example("publication-approval")
     description["operations"] << { "id" => "approve" }

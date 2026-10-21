@@ -30,16 +30,55 @@ export function createValidator() {
 }
 
 /**
- * Each validation error as its JSON Pointer and message. An enum or const error names the
- * values it allows, so the fix is in the message. @internal
+ * Each validation error as its JSON Pointer and message, reduced to the ones that say what to
+ * fix: an enum or const error names the values it allows, an unexpected member is named, an
+ * if/then wrapper is left to the error inside it, and a oneOf whose branches are told apart by
+ * a const reports only the branch the value chose. @internal
  */
 export const schemaErrors = (errors: ErrorObject[] | null | undefined, prefix = '') =>
-  (errors ?? []).map((error) => `${prefix + error.instancePath || '/'}: ${schemaMessage(error)}`);
+  actionable(errors ?? []).map((error) => `${prefix + error.instancePath || '/'}: ${schemaMessage(error)}`);
 
 function schemaMessage(error: ErrorObject): string | undefined {
-  if (error.keyword === 'enum')
-    return `must be one of ${(error.params as { allowedValues: unknown[] }).allowedValues.map((value) => JSON.stringify(value)).join(', ')}`;
+  if (error.keyword === 'enum') return `must be one of ${listed((error.params as { allowedValues: unknown[] }).allowedValues)}`;
   if (error.keyword === 'const')
     return `must be ${JSON.stringify((error.params as { allowedValue: unknown }).allowedValue)}`;
+  if (error.keyword === 'additionalProperties')
+    return `must not have the member ${JSON.stringify((error.params as { additionalProperty: string }).additionalProperty)}`;
   return error.message;
+}
+
+const listed = (values: unknown[]) => values.map((value) => JSON.stringify(value)).join(', ');
+
+function actionable(errors: ErrorObject[]): ErrorObject[] {
+  let kept = errors.filter((error) => error.keyword !== 'if');
+  for (const oneOf of kept.filter((error) => error.keyword === 'oneOf' && !error.params.passingSchemas)) {
+    const branchOf = (error: ErrorObject) =>
+      error.schemaPath.startsWith(`${oneOf.schemaPath}/`)
+        ? Number(error.schemaPath.slice(oneOf.schemaPath.length + 1).split('/')[0])
+        : undefined;
+    const branches = new Map<number, ErrorObject[]>();
+    for (const error of kept) {
+      const branch = branchOf(error);
+      if (branch !== undefined) branches.set(branch, [...(branches.get(branch) ?? []), error]);
+    }
+    // The discriminator: a const one level below the oneOf's value that a branch refused.
+    const discriminator = (branch: ErrorObject[]) =>
+      branch.find(
+        (error) =>
+          error.keyword === 'const' &&
+          error.instancePath.startsWith(`${oneOf.instancePath}/`) &&
+          !error.instancePath.slice(oneOf.instancePath.length + 1).includes('/'),
+      );
+    const refused = [...branches.values()].map(discriminator);
+    const chosen = [...branches.keys()].filter((_, index) => !refused[index]);
+    const sharedPointer = refused.find(Boolean)?.instancePath;
+    if (chosen.length === 1 && refused.filter(Boolean).length === branches.size - 1) {
+      kept = kept.filter((error) => error !== oneOf && (branchOf(error) ?? chosen[0]) === chosen[0]);
+    } else if (chosen.length === 0 && sharedPointer && refused.every((error) => error?.instancePath === sharedPointer)) {
+      const allowed = refused.map((error) => (error!.params as { allowedValue: unknown }).allowedValue);
+      const combined = { ...refused[0]!, keyword: 'enum', params: { allowedValues: allowed } } as ErrorObject;
+      kept = [...kept.filter((error) => error !== oneOf && branchOf(error) === undefined), combined];
+    }
+  }
+  return kept;
 }

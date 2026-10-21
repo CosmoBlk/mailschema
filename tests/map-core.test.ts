@@ -116,6 +116,42 @@ describe('descriptions', () => {
     ]);
   });
 
+  it('refuses an inLanguage that is not a well-formed BCP 47 tag', () => {
+    const description = example('publication-approval');
+    for (const tag of ['en', 'en-GB', 'zh-Hant-TW', 'sl-rozaj-biske', 'de-CH-1996', 'x-private', 'i-klingon', 'EN-gb'])
+      expect(descriptionErrors({ ...description, inLanguage: tag }), tag).toEqual([]);
+    for (const tag of ['not a lang tag!!', 'englishman', 'en_GB', 'en-', 'en--GB', 'a-b'])
+      expect(descriptionErrors({ ...description, inLanguage: tag }), tag).toEqual([
+        '/inLanguage: must be a well-formed BCP 47 language tag',
+      ]);
+  });
+
+  it('reports what to fix, not every branch of a schema it failed', () => {
+    const contract = contracts.get('publication-approval')!;
+    const description = example('publication-approval');
+    const withDetails = (edit: (details: Record<string, unknown>) => void) => {
+      const broken = structuredClone(description);
+      edit(broken.details as Record<string, unknown>);
+      return contract.descriptionErrors(broken);
+    };
+
+    expect(withDetails((details) => (details.schedule = { mode: 'later', at: '2026-10-21T09:00:00Z' }))).toEqual([
+      '/details/schedule/mode: must be one of "immediate", "scheduled"',
+    ]);
+    expect(withDetails((details) => (details.schedule = { mode: 'scheduled', at: 'tomorrow at noon' }))).toEqual([
+      '/details/schedule/at: must match pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"',
+      '/details/schedule/at: must match format "date-time"',
+    ]);
+    expect(
+      withDetails((details) => {
+        const [destination] = details.destinations as Array<Record<string, unknown>>;
+        destination.visibility = 'restricted';
+        delete destination.audience;
+      }),
+    ).toEqual(["/details/destinations/0: must have required property 'audience'"]);
+    expect(withDetails((details) => (details.colour = 'blue'))).toEqual(['/details: must not have the member "colour"']);
+  });
+
   it('checks a description against the contract it names', () => {
     const contract = contracts.get('email-address-confirmation')!;
     const description = example('email-address-confirmation');

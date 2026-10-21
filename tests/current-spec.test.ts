@@ -20,6 +20,9 @@ test('current catalogue binds every rendered contract and example to its canonic
       digest(source),
     );
     expect(record.exampleHref).toContain('/artifacts/map-0.3/');
+    expect(currentCatalog.types.find((item) => item.slug === record.slug && item.current)).toMatchObject({
+      exampleHref: record.exampleHref,
+    });
   }
 });
 

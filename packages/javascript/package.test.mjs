@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFile, readdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -100,6 +102,27 @@ test('checks files from the command line and prints their digests', async () => 
   }
   const extracted = execFileSync(process.execPath, [cli, 'message', path('examples/publication.eml')], { stdio: 'pipe' });
   assert.deepEqual(parseDescription(extracted), await load('examples/publication-approval.json'));
+  const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(run('--version'), `${version}\n`);
+  assert.match(run('description', '--help'), /^mailschema description <description\.json> \[--contract <contract\.json>\]\n/);
+  const publication = path('examples/publication-approval.json');
+  assert.deepEqual(JSON.parse(run('description', publication, '--json')), {
+    valid: true,
+    id: (await load('examples/publication-approval.json'))['@id'],
+    digest: descriptionDigests['publication-approval'],
+  });
+  const refused = (args) => {
+    try {
+      run(...args);
+    } catch (error) {
+      return error;
+    }
+    assert.fail(`${args.join(' ')} was accepted`);
+  };
+  assert.deepEqual(JSON.parse(refused(['contract', publication, '--json']).stdout).valid, false);
+  const large = join(await mkdtemp(join(tmpdir(), 'mailschema-')), 'large.json');
+  await writeFile(large, JSON.stringify({ padding: 'x'.repeat(DESCRIPTION_MAX_BYTES) }));
+  assert.match(refused(['description', large]).stderr, /at most 65536 bytes/);
   const campaign = path('examples/campaign-send-approval.json');
   assert.throws(() => run('message', campaign));
   assert.throws(() => run('contract', campaign));

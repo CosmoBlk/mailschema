@@ -6,9 +6,21 @@ module Mailschema
   UNSAFE = /\p{White_Space}|\p{Cc}|\p{Cf}/
   private_constant :UNSAFE
 
+  # A well-formed BCP 47 language tag: RFC 5646's langtag, privateuse and grandfathered forms.
+  LANGUAGE_TAG = Regexp.new(
+    "\\A(?:(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{4}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?" \
+    "(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?" \
+    "|x(?:-[a-z0-9]{1,8})+" \
+    "|en-gb-oed|i-(?:ami|bnn|default|enochian|hak|klingon|lux|mingo|navajo|pwn|tao|tay|tsu)" \
+    "|sgn-(?:be-fr|be-nl|ch-de)|art-lojban|cel-gaulish|no-(?:bok|nyn)|zh-(?:guoyu|hakka|min|min-nan|xiang))\\z",
+    Regexp::IGNORECASE
+  )
+  private_constant :LANGUAGE_TAG
+
   # Why the value is not a MAP 0.3 description, or no reasons. Beyond the core schema: expiry
-  # follows issuance, operation identifiers are unique, and no security-sensitive identifier
-  # contains whitespace, a control or a formatting character.
+  # follows issuance, inLanguage is a well-formed BCP 47 tag, operation identifiers are unique,
+  # and no security-sensitive identifier contains whitespace, a control or a formatting
+  # character.
   def self.description_errors(value)
     errors = Schemas.errors(Schemas::CORE, value)
     return errors if errors.any?
@@ -16,6 +28,7 @@ module Mailschema
     if Time.iso8601(value["expiresAt"]) <= Time.iso8601(value["issuedAt"])
       errors << "/expiresAt: must be later than issuedAt"
     end
+    errors << "/inLanguage: must be a well-formed BCP 47 language tag" unless LANGUAGE_TAG.match?(value["inLanguage"])
     ids = value["operations"].map { |operation| operation["id"] }
     errors << "/operations: identifiers must be unique" if ids.uniq.size != ids.size
     identifiers(value).each do |pointer, identifier|

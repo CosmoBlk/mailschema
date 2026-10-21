@@ -25,16 +25,29 @@ const validate = createValidator().compile<Description>(coreSchema);
 // Whitespace, controls, bidirectional and invisible formatting characters.
 const UNSAFE = /[\p{White_Space}\p{Cc}\p{Cf}]/u;
 
+// A well-formed BCP 47 language tag: RFC 5646's langtag, privateuse and grandfathered forms.
+const LANGUAGE_TAG = new RegExp(
+  '^(?:(?:[a-z]{2,3}(?:-[a-z]{3}){0,3}|[a-z]{4}|[a-z]{5,8})(?:-[a-z]{4})?(?:-(?:[a-z]{2}|[0-9]{3}))?' +
+    '(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*(?:-[0-9a-wy-z](?:-[a-z0-9]{2,8})+)*(?:-x(?:-[a-z0-9]{1,8})+)?' +
+    '|x(?:-[a-z0-9]{1,8})+' +
+    '|en-gb-oed|i-(?:ami|bnn|default|enochian|hak|klingon|lux|mingo|navajo|pwn|tao|tay|tsu)' +
+    '|sgn-(?:be-fr|be-nl|ch-de)|art-lojban|cel-gaulish|no-(?:bok|nyn)|zh-(?:guoyu|hakka|min|min-nan|xiang))$',
+  'i',
+);
+
 /**
  * Why the value is not a MAP 0.3 description, or no reasons. Beyond the core schema:
- * expiry follows issuance, operation identifiers are unique, and no security-sensitive
- * identifier contains whitespace, a control or a formatting character.
+ * expiry follows issuance, inLanguage is a well-formed BCP 47 tag, operation identifiers are
+ * unique, and no security-sensitive identifier contains whitespace, a control or a
+ * formatting character.
  */
 export function descriptionErrors(value: unknown): string[] {
   if (!validate(value)) return schemaErrors(validate.errors);
   const errors: string[] = [];
   if (Date.parse(value.expiresAt) <= Date.parse(value.issuedAt))
     errors.push('/expiresAt: must be later than issuedAt');
+  if (!LANGUAGE_TAG.test(value.inLanguage))
+    errors.push('/inLanguage: must be a well-formed BCP 47 language tag');
   const ids = value.operations.map((operation) => operation.id);
   if (new Set(ids).size !== ids.length) errors.push('/operations: identifiers must be unique');
   const identifiers: [string, string | undefined][] = [

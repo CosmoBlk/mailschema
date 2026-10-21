@@ -141,8 +141,11 @@ export const currentCatalog = {
   format: 'mailschema-registry/3',
   profile: specification.profile,
   status: 'draft',
+  // A current type also names its example description, so a client reaches it without the
+  // HTML page.
   types: typeVersions.map((record) => ({
     ...record,
     href: record.current ? typeHref(record.slug) : record.contractHref,
+    ...(record.current ? { exampleHref: `${specification.artifacts}/examples/${record.slug}.json` } : {}),
   })),
 };
