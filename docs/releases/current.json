@@ -4,8 +4,8 @@
   "channels": [
     {
       "registry": "npm",
-      "evidence": "npm-0.3.2",
-      "version": "0.3.2"
+      "evidence": "npm-0.3.3",
+      "version": "0.3.3"
     },
     {
       "registry": "PyPI",
@@ -24,8 +24,8 @@
     },
     {
       "registry": "RubyGems",
-      "evidence": "rubygems-0.3.0",
-      "version": "0.3.0"
+      "evidence": "rubygems-0.3.1",
+      "version": "0.3.1"
     }
   ]
 }
