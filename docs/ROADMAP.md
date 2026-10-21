@@ -2,6 +2,10 @@
 
 The [0.3 specification bundle](../specifications/map-0.3/README.md) governs new work; the [architecture decision](MAP-0.3-DESIGN.md) explains its boundaries without adding requirements. The bundle contains Core, the HTTP and experimental capability bindings, four draft contracts, conformance skeletons, and the generated `-00` candidate. The site builds a coherent 0.3 reader, Registry, examples and tools experience from those sources. The legacy package and implementation evidence below remains explicitly historical until replacements are implemented and verified.
 
+## Distribution reconciliation, 13 October 2026
+
+The individual MAP 0.3 Internet-Draft submission and venue consultations remain outstanding. The rendered candidate is not a Datatracker submission or an adopted standard. SML consultation concerns the email container; its charter excludes domain vocabulary and post-extraction actions. DISPATCH is the recorded venue-discovery route. Keep public draft date/artifact URLs, author confirmation and final rendered review together before upload. Package Registry declarations, runtime-conformance reports and independent interoperability remain separate evidence.
+
 ## Objective
 
 Make MAP a useful open standard for service actions carried through email, with MailSchema as its specification, type Registry and implementation ecosystem. Prove it in products we control, record exact evidence, accept external contributions through reviewed Registry data, and state maturity and ownership exactly.
